@@ -1,6 +1,7 @@
 import CLIHelper from "./helpers/CLIHelper.js";
-import {YouTubeDownloader, type DownloadConfig, type QualityMode} from "./helpers/YTDownloader.js";
+import { YouTubeDownloader, type DownloadConfig, type QualityMode } from "./helpers/YTDownloader.js";
 import * as path from "node:path";
+import * as os from 'os';
 
 // ==========================================
 // Main Application Class
@@ -27,12 +28,8 @@ class App {
             return;
         }
 
-        let location: string[] = [await this.cli.ask("💾 Enter download location (e.g., ./my_video.mp4): ")];
-        if (!location.length) {
-            location = ["default"];
-            this.cli.close();
-            return;
-        }
+        const input: string = await this.cli.ask("💾 Enter download location (press Enter for Videos folder): ");
+        let location: string[] = input.trim() ? [input.trim()] : [path.join(os.homedir(), "Videos")];
 
         // 2. Ask for Quality Mode
         console.log("\n⚙️  Select Quality Mode:");
@@ -45,12 +42,12 @@ class App {
         let mode: QualityMode;
         let customFormat: string | undefined;
 
-        if (modeChoice === '1') {
-            mode = 'BEST';
-        } else if (modeChoice === '2') {
-            mode = 'OPTIMAL';
-        } else if (modeChoice === '3') {
-            mode = 'CUSTOM';
+        if (modeChoice === "1") {
+            mode = "BEST";
+        } else if (modeChoice === "2") {
+            mode = "OPTIMAL";
+        } else if (modeChoice === "3") {
+            mode = "CUSTOM";
 
             // 3. Fetch formats, show them, and ask for IDs
             await this.downloader.fetchAndDisplayFormats(url);
@@ -75,11 +72,11 @@ class App {
 
         // 4. Fetch metadata BEFORE downloading
         try {
-            const metadata = await this.downloader.fetchSelectedMetadata( url, mode, customFormat );
+            const metadata = await this.downloader.fetchSelectedMetadata(url, mode, customFormat);
             this.downloader.printMetadata(metadata);
-            const confirm = await this.cli.ask('⬇️  Start download? (y/n): ');
-            if (confirm.toLowerCase() !== 'y') {
-                console.log('\n❌ Download cancelled.');
+            const confirm = await this.cli.ask("⬇️  Start download? (y/n): ");
+            if (confirm.toLowerCase() !== "y") {
+                console.log("\n❌ Download cancelled.");
                 return;
             }
 
@@ -88,7 +85,7 @@ class App {
                 url,
                 mode,
                 outputPath: path.resolve(...location),
-                customFormat
+                customFormat,
             };
 
             // 6. Execute Download
@@ -100,7 +97,6 @@ class App {
             this.cli.close();
         }
     }
-
 }
 
 // ==========================================
