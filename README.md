@@ -1,11 +1,11 @@
-# Save YT Video - Backend API
+# Save YT Video - Local API
 
-A high-performance Node.js streaming proxy for downloading YouTube videos on the fly. This backend uses `yt-dlp` to extract streaming URLs and pipes the video directly to the client. For high-quality videos (1080p), it uses FFmpeg to live-merge the audio and video tracks without saving anything to the server's disk.
+A lightweight Node.js backend for downloading YouTube videos locally. It uses the `yt-dlp` CLI to download and merge videos directly to your computer's `Downloads` folder at maximum speed.
 
 ## Requirements
 - Node.js 18+
 - Python 3 (Required by yt-dlp)
-- FFmpeg (Required for 1080p stream merging)
+- FFmpeg (Required for 1080p merging)
 
 ## Installation & Setup
 ```bash
@@ -23,24 +23,24 @@ Fetch all available video and audio formats for a specific YouTube URL.
   - `url` (Required): The YouTube video URL
 - **Example**: `http://localhost:3000/api/formats?url=https://www.youtube.com/watch?v=WZlTzLwP9jY`
 
-### 2. Stream Optimal Quality (1080p)
-Downloads the best video stream (up to 1080p) and the best audio stream, and merges them live into an `.mkv` file.
-- **Endpoint**: `GET /api/stream/optimal`
+### 2. Get Video Metadata
+Fetch metadata (title, duration, filesize, thumbnail, etc.) for a specific YouTube URL and quality mode.
+- **Endpoint**: `GET /api/metadata`
 - **Query Parameters**: 
   - `url` (Required): The YouTube video URL
-- **Example**: `http://localhost:3000/api/stream/optimal?url=https://www.youtube.com/watch?v=WZlTzLwP9jY`
+  - `mode` (Optional): `OPTIMAL` (default), `BEST`, `CUSTOM`
+  - `customFormat` (Optional): Specify format if mode is CUSTOM.
+- **Example**: `http://localhost:3000/api/metadata?url=https://www.youtube.com/watch?v=WZlTzLwP9jY&mode=OPTIMAL`
 
-### 3. Stream Best Single Format (720p max)
-Downloads the best pre-merged `.mp4` format available directly from YouTube (usually 720p) without needing FFmpeg. Faster, and fully supports pausing/resuming.
-- **Endpoint**: `GET /api/stream/best`
+### 3. Download Video Locally
+Triggers `yt-dlp` to download the video directly to your computer's `Downloads` folder (e.g. `C:\Users\username\Downloads`), or a custom location you specify. The download happens in the background at maximum multi-connection speeds.
+- **Endpoint**: `GET /api/download`
 - **Query Parameters**: 
   - `url` (Required): The YouTube video URL
-- **Example**: `http://localhost:3000/api/stream/best?url=https://www.youtube.com/watch?v=WZlTzLwP9jY`
-
-### 4. Stream Custom Format
-Allows you to specify exact `yt-dlp` format IDs to stream.
-- **Endpoint**: `GET /api/stream/custom`
-- **Query Parameters**: 
-  - `url` (Required): The YouTube video URL
-  - `customFormat` (Required): The format ID (e.g. `137+140` for 1080p video + m4a audio, or just `18` for 360p mp4).
-- **Example**: `http://localhost:3000/api/stream/custom?url=https://www.youtube.com/watch?v=WZlTzLwP9jY&customFormat=137+140`
+  - `mode` (Optional): `OPTIMAL` (default), `BEST`, `CUSTOM`
+  - `customFormat` (Optional): Specify format if mode is CUSTOM.
+  - `customLocation` (Optional): An absolute path to a custom download directory.
+- **Example Request**: 
+```
+GET http://localhost:3000/api/download?url=https://www.youtube.com/watch?v=WZlTzLwP9jY&mode=OPTIMAL
+```

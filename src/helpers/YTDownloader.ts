@@ -214,7 +214,7 @@ class YouTubeDownloader {
     /**
      * Downloads a YouTube video using the official yt-dlp CLI based on config.
      */
-    public downloadVideo(config: DownloadConfig): Promise<string> {
+    public downloadVideo(config: DownloadConfig, onProgress?: (line: string) => void): Promise<string> {
         const { url, mode, outputPath, customFormat } = config;
 
         return new Promise((resolve, reject) => {
@@ -250,7 +250,7 @@ class YouTubeDownloader {
             ytProcess.stderr.setEncoding("utf8");
 
             // Logger
-            const ytLogger = new YTDlpLogger(ytProcess.stdout);
+            const ytLogger = new YTDlpLogger(ytProcess.stdout, onProgress);
 
             ytProcess.stderr.on("data", (data) => {
                 const msg = data.toString();
