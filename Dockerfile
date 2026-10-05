@@ -1,4 +1,4 @@
-FROM node:18-bullseye-slim
+FROM node:20-bookworm-slim
 
 # Install system dependencies: ffmpeg and python3 (required for yt-dlp)
 RUN apt-get update && apt-get install -y \
