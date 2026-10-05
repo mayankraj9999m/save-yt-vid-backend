@@ -81,6 +81,47 @@ class YouTubeDownloader {
     }
 
     /**
+     * Fetches available formats as a structured JSON object.
+     */
+    public getAvailableFormats(url: string): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            const child = spawn("yt-dlp", ["-J", url]);
+            let output = "";
+            let errorOutput = "";
+
+            child.stdout.on("data", (data) => output += data.toString());
+            child.stderr.on("data", (data) => errorOutput += data.toString());
+
+            child.on("close", (code) => {
+                if (code === 0) {
+                    try {
+                        const info = JSON.parse(output);
+                        const formats = info.formats.map((f: any) => ({
+                            format_id: f.format_id,
+                            ext: f.ext,
+                            resolution: f.resolution || (f.width ? `${f.width}x${f.height}` : "audio only"),
+                            fps: f.fps,
+                            vcodec: f.vcodec !== "none" ? f.vcodec : null,
+                            acodec: f.acodec !== "none" ? f.acodec : null,
+                            filesize: f.filesize ? Utils.formatFileSize(f.filesize) : "Unknown",
+                            tbr: f.tbr
+                        }));
+                        resolve(formats);
+                    } catch (e) {
+                        reject(new Error("Failed to parse yt-dlp JSON output"));
+                    }
+                } else {
+                    reject(new Error(`yt-dlp format fetch failed with code ${code}\n${errorOutput}`));
+                }
+            });
+
+            child.on("error", (err) => {
+                reject(new Error(`Failed to start yt-dlp: ${err.message}`));
+            });
+        });
+    }
+
+    /**
      * Fetches and displays metadata for a YouTube video using `yt-dlp --print`.
      */
     public fetchSelectedMetadata(
@@ -253,6 +294,45 @@ class YouTubeDownloader {
         console.log(`🎵 Audio ID           : ${metadata.audioId}`);
         console.log(`🖼️  Thumbnail          : ${metadata.thumbnail}`);
         console.log("==========================================\n");
+    }
+
+    /**
+     * Extracts the direct playback URLs (video/audio or merged) without downloading.
+     * Uses `yt-dlp -g` flag.
+     */
+    public getDirectStreamUrl(url: string, format: string = "best[ext=mp4]"): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            const args = [
+                "--encoding", "utf-8",
+                "-g",
+                "-f", format,
+                url
+            ];
+
+            const ytProcess = spawn("yt-dlp", args);
+            let output = "";
+            let errorOutput = "";
+
+            ytProcess.stdout.on("data", (data) => output += data.toString());
+            ytProcess.stderr.on("data", (data) => errorOutput += data.toString());
+
+            ytProcess.on("close", (code) => {
+                if (code === 0) {
+                    const urls = output.trim().split("\n").filter(u => u.length > 0);
+                    if (urls.length > 0) {
+                        resolve(urls);
+                    } else {
+                        reject(new Error("yt-dlp returned empty URL string"));
+                    }
+                } else {
+                    reject(new Error(`yt-dlp get direct URL failed with code ${code}\n${errorOutput}`));
+                }
+            });
+
+            ytProcess.on("error", (err) => {
+                reject(new Error(`❌ Failed to start yt-dlp.\n${err.message}`));
+            });
+        });
     }
 }
 
