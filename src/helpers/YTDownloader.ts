@@ -14,6 +14,7 @@ interface DownloadConfig {
     mode: QualityMode;
     outputPath: string;
     customFormat?: string | undefined;
+    id?: string;
 }
 
 interface SelectedVideoMetadata {
@@ -27,6 +28,8 @@ interface SelectedVideoMetadata {
 }
 
 class YouTubeDownloader {
+    private activeDownloads: Map<string, import("child_process").ChildProcess> = new Map();
+
     public generateFormattedString(mode: QualityMode, customFormat: string | undefined): string | undefined {
         let format: string | undefined;
         switch (mode) {
@@ -83,7 +86,7 @@ class YouTubeDownloader {
     /**
      * Fetches available formats as a structured JSON object.
      */
-    public getAvailableFormats(url: string): Promise<any[]> {
+    public getAvailableFormats(url: string): Promise<any> {
         return new Promise((resolve, reject) => {
             const child = spawn("yt-dlp", ["-J", url]);
             let output = "";
@@ -104,9 +107,17 @@ class YouTubeDownloader {
                             vcodec: f.vcodec !== "none" ? f.vcodec : null,
                             acodec: f.acodec !== "none" ? f.acodec : null,
                             filesize: f.filesize ? Utils.formatFileSize(f.filesize) : "Unknown",
+                            filesize_bytes: f.filesize || 0,
                             tbr: f.tbr
                         }));
-                        resolve(formats);
+                        resolve({
+                            formats,
+                            info: {
+                                title: info.title,
+                                thumbnail: info.thumbnail,
+                                duration: info.duration
+                            }
+                        });
                     } catch (e) {
                         reject(new Error("Failed to parse yt-dlp JSON output"));
                     }
@@ -245,6 +256,10 @@ class YouTubeDownloader {
                 stdio: ["ignore", "pipe", "pipe"],
             });
 
+            if (config.id) {
+                this.activeDownloads.set(config.id, ytProcess);
+            }
+
             // UTF-8 decoding
             ytProcess.stdout.setEncoding("utf8");
             ytProcess.stderr.setEncoding("utf8");
@@ -258,6 +273,7 @@ class YouTubeDownloader {
             });
 
             ytProcess.on("close", (code) => {
+                if (config.id) this.activeDownloads.delete(config.id);
                 let finalFilePath = ytLogger.getFinalFilePath();
                 ytLogger.close();
                 if (code === 0) {
@@ -276,10 +292,21 @@ class YouTubeDownloader {
             });
 
             ytProcess.on("error", (err) => {
+                if (config.id) this.activeDownloads.delete(config.id);
                 ytLogger.close();
                 reject(new Error(`❌ Failed to start yt-dlp.\n${err.message}`));
             });
         });
+    }
+
+    public cancelDownload(id: string): boolean {
+        const process = this.activeDownloads.get(id);
+        if (process) {
+            process.kill('SIGKILL');
+            this.activeDownloads.delete(id);
+            return true;
+        }
+        return false;
     }
 
     public printMetadata(metadata: SelectedVideoMetadata): void {
